@@ -1,0 +1,10 @@
+[package]
+name = "bingusbot"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serenity = {version = "0.12.1", features=["collector"]}
+tokio = {version = "1.37.0", features=["rt-multi-thread"]}
+toml = {version = "0.8.13" }
+serde = { version = "1.0.202"}
