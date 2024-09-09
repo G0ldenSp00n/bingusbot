@@ -1,160 +1,69 @@
+mod commands;
+mod reaction_roles;
 mod settings;
 
-use std::collections::HashMap;
 use std::env;
 
-use serenity::collector::collect;
-use serenity::futures::StreamExt;
+use commands::queue::QueueCommand;
+use serenity::builder::{CreateInteractionResponse, CreateInteractionResponseMessage};
 use serenity::http::Http;
 use serenity::model::prelude::*;
 use serenity::{async_trait, prelude::*};
-use settings::{ReactionRole, Settings};
+use settings::Settings;
 
-const ROLE_MESSAGE_ID: MessageId = MessageId::new(1239812899476738059);
-const OTHER_MESSAGE_ID: MessageId = MessageId::new(1239856642405961728);
-
-const MINECRAFT_REACTION_EMOJI: EmojiId = EmojiId::new(1240566802539614238);
-const MINECRAFT_ROLE: RoleId = RoleId::new(1240142607103819776);
-
-const SMALL_OUTING_REACTION_EMOJI: &str = "☕";
-const SMALL_OUTING_ROLE: RoleId = RoleId::new(1240569555097489489);
-
-struct Handler;
+struct Handler {
+    settings: Settings,
+    queue_command: QueueCommand,
+}
 
 enum CollectorEvent {
     ReactionAdd(Reaction),
     ReactionRemove(Reaction),
 }
 
+impl Handler {
+    fn new() -> Self {
+        let settings = Settings::deserialize().expect("Should match the config format");
+        let queue_command = QueueCommand::new(settings.clone());
+        Handler {
+            settings,
+            queue_command,
+        }
+    }
+}
+
 #[async_trait]
 impl EventHandler for Handler {
-    async fn ready(&self, ctx: Context, _ready: Ready) {
-        println!("BingusBot is connected!");
-
-        let settings = Settings::deserialize().expect("Should match the config format");
-        println!("{:?}", settings);
-        println!(
-            "{:?}",
-            settings
-                .reaction_roles
-                .get(0)
-                .expect("There should always be at least one reaction role")
-                .message_id
-        );
-
-        let mut custom_emoji_reaction_to_role_lookup: HashMap<EmojiId, RoleId> = HashMap::new();
-        let mut emoji_reaction_to_role_lookup: HashMap<String, RoleId> = HashMap::new();
-        for reaction_role in settings.reaction_roles {
-            for reaction_name in reaction_role.roles.keys() {
-                let reaction_role = reaction_role.roles.get(reaction_name).unwrap();
-                if let Some(emoji_id) = reaction_role.emoji_id {
-                    custom_emoji_reaction_to_role_lookup.insert(emoji_id, reaction_role.role_id);
-                } else if let Some(emoji_string) = reaction_role.emoji_char.as_deref() {
-                    emoji_reaction_to_role_lookup
-                        .insert(emoji_string.to_owned(), reaction_role.role_id);
+    async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
+        if let Interaction::Command(command) = interaction {
+            let content = match command.data.name.as_str() {
+                "queue" => {
+                    self.queue_command.run(&ctx, &command).await.unwrap();
+                    None
                 }
-            }
+                _ => Some("not implemented :(".to_string()),
+            };
+
+            if let Some(content) = content {
+                let data = CreateInteractionResponseMessage::new().content(content);
+                let builder = CreateInteractionResponse::Message(data);
+                if let Err(why) = command.create_response(&ctx.http, builder).await {
+                    println!("Cannot respond to slash command: {why}");
+                };
+            };
+        };
+    }
+
+    async fn ready(&self, ctx: Context, _ready: Ready) {
+        println!("{} is Connected!", self.settings.general.name);
+
+        if self.settings.flags.deadlock_queue_start {
+            Command::create_global_command(&ctx.http, self.queue_command.register())
+                .await
+                .expect("Failed to Register Command");
         }
 
-        let reaction_collector = collect(&ctx.shard, |event| match event {
-            Event::ReactionAdd(event) => Some(CollectorEvent::ReactionAdd(event.reaction.clone())),
-            Event::ReactionRemove(event) => {
-                Some(CollectorEvent::ReactionRemove(event.reaction.clone()))
-            }
-            _ => None,
-        });
-
-        reaction_collector
-            .for_each(|reaction_event| async {
-                match reaction_event {
-                    CollectorEvent::ReactionAdd(reaction) => {
-                        match reaction.message_id {
-                            ROLE_MESSAGE_ID => {
-                                match reaction.emoji {
-                                    ReactionType::Custom {
-                                        animated: _,
-                                        id: MINECRAFT_REACTION_EMOJI,
-                                        name: _,
-                                    } => {
-                                        if let Some(member) = reaction.member {
-                                            member
-                                                .add_role(&ctx.http, MINECRAFT_ROLE)
-                                                .await
-                                                .unwrap();
-                                        }
-                                    }
-                                    ReactionType::Unicode(emoji) => match emoji.as_str() {
-                                        SMALL_OUTING_REACTION_EMOJI => {
-                                            if let Some(member) = reaction.member {
-                                                member
-                                                    .add_role(&ctx.http, SMALL_OUTING_ROLE)
-                                                    .await
-                                                    .unwrap();
-                                            }
-                                        }
-                                        _ => (),
-                                    },
-                                    _ => {
-                                        println!("Unknown Emoji Reaction {}", reaction.emoji);
-                                    }
-                                };
-                            }
-                            OTHER_MESSAGE_ID => (),
-                            _ => (),
-                        };
-                    }
-                    CollectorEvent::ReactionRemove(reaction) => match reaction.message_id {
-                        ROLE_MESSAGE_ID => {
-                            match reaction.emoji {
-                                ReactionType::Custom {
-                                    animated: _,
-                                    id: MINECRAFT_REACTION_EMOJI,
-                                    name: _,
-                                } => {
-                                    if let Some(guild_id) = reaction.guild_id {
-                                        if let Some(user_id) = reaction.user_id {
-                                            let member =
-                                                &ctx.http.get_member(guild_id, user_id).await;
-                                            if let Ok(member) = member {
-                                                member
-                                                    .remove_role(&ctx.http, MINECRAFT_ROLE)
-                                                    .await
-                                                    .unwrap();
-                                            }
-                                        }
-                                    }
-                                }
-                                ReactionType::Unicode(emoji) => match emoji.as_str() {
-                                    SMALL_OUTING_REACTION_EMOJI => {
-                                        if let Some(guild_id) = reaction.guild_id {
-                                            if let Some(user_id) = reaction.user_id {
-                                                let member =
-                                                    &ctx.http.get_member(guild_id, user_id).await;
-                                                if let Ok(member) = member {
-                                                    member
-                                                        .remove_role(&ctx.http, SMALL_OUTING_ROLE)
-                                                        .await
-                                                        .unwrap();
-                                                }
-                                            }
-                                        }
-                                    }
-                                    _ => (),
-                                },
-
-                                _ => {
-                                    println!("Unknown Emoji Reaction {}", reaction.emoji);
-                                }
-                            };
-                        }
-                        OTHER_MESSAGE_ID => {
-                            println!("{} other !!!", reaction.emoji);
-                        }
-                        _ => (),
-                    },
-                };
-            })
-            .await;
+        reaction_roles::ReactionRole::register(&ctx, &self.settings).await;
     }
 }
 
@@ -174,10 +83,11 @@ async fn main() {
     let intents = GatewayIntents::GUILD_MESSAGES
         | GatewayIntents::DIRECT_MESSAGES
         | GatewayIntents::MESSAGE_CONTENT
-        | GatewayIntents::GUILD_MESSAGE_REACTIONS;
+        | GatewayIntents::GUILD_MESSAGE_REACTIONS
+        | GatewayIntents::AUTO_MODERATION_CONFIGURATION;
 
     let mut client = Client::builder(&token, intents)
-        .event_handler(Handler)
+        .event_handler(Handler::new())
         .await
         .expect("Err creating client");
 

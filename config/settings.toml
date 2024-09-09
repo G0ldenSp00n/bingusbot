@@ -1,15 +1,24 @@
+[general]
+name = "Haze Bot"
+
+[flags]
+deadlock_queue_start = true
+
+[[game_queue]]
+game_name = "Deadlock"
+roles_message_id = 1282242118945083413
+exclude = []
 
 [[reaction_roles]]
-message_id = 1239812899476738059
+message_id = 1282242118945083413
 create_message_if_not_exists = true
 
+[reaction_roles.roles.casual_candle_trooper]
+emoji_char = "🕯️"
+role_id = 1282242176201527331 
+title = "Casual Candle Trooper"
 
-[reaction_roles.roles.minecraft]
-emoji_id = 1240566802539614238
-role_id = 1240142607103819776
-title = "Minecraft"
-
-[reaction_roles.roles.small_outing]
-emoji_char = "☕"
-role_id = 1240569555097489489
-title = "Small Outings"
+[reaction_roles.roles.try-hard_lane_guardian]
+emoji_char = "🔥"
+role_id = 1282242281247871069
+title = "Try-Hard Lane Guardian"
