@@ -15,7 +15,6 @@ pub struct ReactionRole {
 #[derive(Deserialize, Debug, Clone)]
 pub struct ReactionRoles {
     pub message_id: MessageId,
-    pub create_message_if_not_exists: bool,
     pub roles: HashMap<String, ReactionRole>,
 }
 

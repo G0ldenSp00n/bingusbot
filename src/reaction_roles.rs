@@ -13,7 +13,7 @@ impl ReactionRole {
         let message_id_to_emoji_reaction_to_role_lookup =
             settings.message_id_to_emoji_reaction_to_reactionrole_lookup();
 
-        let channel_id = ChannelId::new(1282242098380406784);
+        let channel_id = ChannelId::new(1282212842094854238);
         for message_id in message_id_to_emoji_reaction_to_role_lookup.keys() {
             let message = channel_id.message(&ctx.http, message_id).await.unwrap();
             for reaction_role in message_id_to_emoji_reaction_to_role_lookup
