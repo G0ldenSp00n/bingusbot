@@ -14,6 +14,7 @@ pub struct ReactionRole {
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct ReactionRoles {
+    pub channel_id: ChannelId,
     pub message_id: MessageId,
     pub roles: HashMap<String, ReactionRole>,
 }
@@ -51,6 +52,16 @@ impl Settings {
         .unwrap();
         let reactions_roles: Settings = toml::from_str(file_str.as_str())?;
         return Ok(reactions_roles);
+    }
+
+    pub fn message_id_to_channel_id(&self) -> HashMap<MessageId, ChannelId> {
+        let mut message_id_to_channel_id_hashmap: HashMap<MessageId, ChannelId> = HashMap::new();
+        for reaction_role_message in self.reaction_roles.clone() {
+            let message_id = reaction_role_message.message_id;
+            let channel_id = reaction_role_message.channel_id;
+            message_id_to_channel_id_hashmap.insert(message_id, channel_id);
+        }
+        message_id_to_channel_id_hashmap
     }
 
     pub fn message_id_to_emoji_reaction_to_reactionrole_lookup(

@@ -1,4 +1,4 @@
-use serenity::all::{ChannelId, Event, ReactionType};
+use serenity::all::{Event, ReactionType};
 use serenity::collector::collect;
 use serenity::futures::StreamExt;
 use serenity::prelude::*;
@@ -13,8 +13,9 @@ impl ReactionRole {
         let message_id_to_emoji_reaction_to_role_lookup =
             settings.message_id_to_emoji_reaction_to_reactionrole_lookup();
 
-        let channel_id = ChannelId::new(1282212842094854238);
+        let message_id_to_channel_id = settings.message_id_to_channel_id();
         for message_id in message_id_to_emoji_reaction_to_role_lookup.keys() {
+            let channel_id = message_id_to_channel_id.get(message_id).unwrap();
             let message = channel_id.message(&ctx.http, message_id).await.unwrap();
             for reaction_role in message_id_to_emoji_reaction_to_role_lookup
                 .get(message_id)

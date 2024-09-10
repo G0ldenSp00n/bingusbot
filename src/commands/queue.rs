@@ -8,6 +8,10 @@ use serenity::utils::MessageBuilder;
 
 use crate::settings::{ReactionRole, Settings};
 
+use tokio::time::sleep;
+
+const APPROX_MATCH_LENGTH_MINS: u64 = 30;
+
 pub struct QueueCommand {
     settings: Settings,
 }
@@ -29,6 +33,7 @@ impl QueueCommand {
                                 "minute_wait",
                                 CreateSelectMenuKind::String {
                                     options: vec![
+                                        CreateSelectMenuOption::new("1 Minute", "1"),
                                         CreateSelectMenuOption::new("5 Minutes", "5"),
                                         CreateSelectMenuOption::new("10 Minutes", "10"),
                                         CreateSelectMenuOption::new("15 Minutes", "15"),
@@ -125,7 +130,7 @@ impl QueueCommand {
             .await
             .unwrap()
             .await_component_interaction(&ctx.shard)
-            .timeout(Duration::from_secs(60 * 2))
+            .timeout(Duration::from_secs(5))
             .await
         {
             Some(x) => x,
@@ -147,13 +152,22 @@ impl QueueCommand {
             {
                 let minutes_to_wait_value: u64 =
                     (minutes_to_wait_values[0]).to_string().parse().unwrap();
-                interaction.delete_response(&ctx).await.unwrap();
+                interaction
+                    .create_response(
+                        &ctx,
+                        CreateInteractionResponse::UpdateMessage(
+                            CreateInteractionResponseMessage::new()
+                                .content("Message Sent!")
+                                .components(vec![]),
+                        ),
+                    )
+                    .await
+                    .unwrap();
 
                 let mut response = MessageBuilder::new();
-                response = response
+                response
                     .push_line("## Queueing")
-                    .push_line("### Looking to Queue With")
-                    .clone();
+                    .push_line("### Looking to Queue With");
                 roles_to_at_values.iter().for_each(|role_id| {
                     let reaction_role = game_name_to_roles
                         .get("Deadlock")
@@ -162,16 +176,14 @@ impl QueueCommand {
                         .find(|reaction_role| &reaction_role.role_id.to_string() == role_id)
                         .unwrap();
                     if let Some(emoji_char) = reaction_role.emoji_char.clone() {
-                        response = response
+                        response
                             .push(emoji_char)
                             .mention(&RoleId::new(role_id.parse().unwrap()))
-                            .push_line("")
-                            .clone()
+                            .push_line("");
                     } else {
-                        response = response
+                        response
                             .mention(&RoleId::new(role_id.parse().unwrap()))
-                            .push_line("")
-                            .clone()
+                            .push_line("");
                     }
                 });
 
@@ -179,18 +191,59 @@ impl QueueCommand {
                 let since_the_epoch = start
                     .duration_since(UNIX_EPOCH)
                     .expect("Time Went Backwards");
-                interaction
+                let channel_id = interaction
                     .get_response(&ctx)
                     .await
                     .unwrap()
                     .channel_id
+                    .clone();
+
+                let mut message = channel_id
                     .send_message(
                         &ctx,
                         CreateMessage::new().content(
                             response
-                                .push_line("")
-                                .push(format!(
+                                .clone()
+                                .push_line(format!(
                                     "Deadlock Queueing <t:{}:R>",
+                                    since_the_epoch.as_secs() + (minutes_to_wait_value * 60)
+                                ))
+                                .build(),
+                        ),
+                    )
+                    .await
+                    .unwrap();
+
+                interaction.delete_response(&ctx).await.unwrap();
+                sleep(Duration::from_secs(minutes_to_wait_value * 60)).await;
+                message
+                    .edit(
+                        &ctx,
+                        EditMessage::new().content(
+                            response
+                                .clone()
+                                .push_line(format!(
+                                    "Started Queueing <t:{}:R>",
+                                    since_the_epoch.as_secs() + (minutes_to_wait_value * 60)
+                                ))
+                                .push_line(format!(
+                                    "Approx. Next Match <t:{}:R>",
+                                    since_the_epoch.as_secs() + (APPROX_MATCH_LENGTH_MINS * 60),
+                                ))
+                                .build(),
+                        ),
+                    )
+                    .await
+                    .unwrap();
+                sleep(Duration::from_secs(APPROX_MATCH_LENGTH_MINS * 60)).await;
+                message
+                    .edit(
+                        &ctx,
+                        EditMessage::new().content(
+                            response
+                                .clone()
+                                .push_line(format!(
+                                    "Started Queueing <t:{}:R>",
                                     since_the_epoch.as_secs() + (minutes_to_wait_value * 60)
                                 ))
                                 .build(),

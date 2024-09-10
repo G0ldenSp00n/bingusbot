@@ -1,51 +1,24 @@
 [general]
-name = "Haze Bot"
+name = "Dev Testing Bot"
 
 [flags]
 deadlock_queue_start = true
 
 [[game_queue]]
 game_name = "Deadlock"
-roles_message_id = 1282213950523572287
+roles_message_id = 1282242118945083413
 exclude = []
 
 [[reaction_roles]]
-message_id = 1282213950523572287
+message_id = 1282242118945083413 
+channel_id = 1282242098380406784 
 
 [reaction_roles.roles.casual_candle_trooper]
 emoji_char = "🕯️"
-role_id = 1282459247400976474
+role_id = 1282242176201527331 
 title = "Casual Candle Trooper"
 
-[reaction_roles.roles.focused_lane_guardian]
+[reaction_roles.roles.try-hard_lane_guardian]
 emoji_char = "🔥"
-role_id = 1282459425377878037
-title = "Focused Lane Guardian"
-
-[reaction_roles.roles.experimenting_walker]
-emoji_char = "⚙️"
-role_id = 1282466141205303340
-title = "Experimenting Walker"
-
-[[reaction_roles]]
-message_id = 1282472946010558518
-
-[reaction_roles.roles.stream_student]
-emoji_char = "🔴"
-role_id = 1282475940944809994
-title = "Stream Students"
-
-[reaction_roles.roles.theory_majors]
-emoji_char = "🧠"
-role_id = 1282476065268432956
-title = "Theory Majors"
-
-[reaction_roles.roles.mechanics_majors]
-emoji_char = "📈"
-role_id = 1282476415249416214
-title = "Mechanics Major"
-
-[reaction_roles.roles.strategy_majors]
-emoji_char = "🛤️"
-role_id = 1282476935724793876
-title = "Strategy Majors"
+role_id = 1282242281247871069
+title = "Try-Hard Lane Guardian"

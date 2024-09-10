@@ -5,6 +5,7 @@ mod settings;
 use std::env;
 
 use commands::queue::QueueCommand;
+use dotenv::dotenv;
 use serenity::builder::{CreateInteractionResponse, CreateInteractionResponseMessage};
 use serenity::http::Http;
 use serenity::model::prelude::*;
@@ -69,6 +70,7 @@ impl EventHandler for Handler {
 
 #[tokio::main]
 async fn main() {
+    dotenv().ok();
     // Configure the client with your Discord bot token in the environment.
     let token = env::var("DISCORD_TOKEN").expect("Expected a token in the environment");
 
