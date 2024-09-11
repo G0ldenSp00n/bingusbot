@@ -219,23 +219,34 @@ impl QueueCommand {
                 message
                     .edit(
                         &ctx,
-                        EditMessage::new().content(
-                            response
-                                .clone()
-                                .push_line(format!(
-                                    "Started Queueing <t:{}:R>",
-                                    since_the_epoch.as_secs() + (minutes_to_wait_value * 60)
-                                ))
-                                .push_line(format!(
-                                    "Approx. Next Match <t:{}:R>",
-                                    since_the_epoch.as_secs() + (APPROX_MATCH_LENGTH_MINS * 60),
-                                ))
-                                .build(),
-                        ),
+                        EditMessage::new()
+                            .content(
+                                response
+                                    .clone()
+                                    .push_line(format!(
+                                        "Started Queueing <t:{}:R>",
+                                        since_the_epoch.as_secs() + (minutes_to_wait_value * 60)
+                                    ))
+                                    .push_line(format!(
+                                        "Approx. Next Match <t:{}:R>",
+                                        since_the_epoch.as_secs()
+                                            + (minutes_to_wait_value * 60)
+                                            + (APPROX_MATCH_LENGTH_MINS * 60),
+                                    ))
+                                    .build(),
+                            )
+                            .button(
+                                CreateButton::new("wait_for_me")
+                                    .label("I will play next game")
+                                    .style(ButtonStyle::Success),
+                            ),
                     )
                     .await
                     .unwrap();
-                sleep(Duration::from_secs(APPROX_MATCH_LENGTH_MINS * 60)).await;
+                sleep(Duration::from_secs(
+                    (APPROX_MATCH_LENGTH_MINS * 60) - (minutes_to_wait_value * 60),
+                ))
+                .await;
                 message
                     .edit(
                         &ctx,
