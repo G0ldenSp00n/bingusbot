@@ -21,9 +21,9 @@ impl QueueCommand {
     pub async fn run(
         &self,
         ctx: &Context,
-        interaction: &CommandInteraction,
+        queue_command: &CommandInteraction,
     ) -> Result<(), serenity::Error> {
-        interaction
+        queue_command
             .create_response(
                 &ctx,
                 CreateInteractionResponse::Message(
@@ -48,7 +48,7 @@ impl QueueCommand {
             .await
             .unwrap();
 
-        let interaction = match interaction
+        let queue_time_select_menu_interaction = match queue_command
             .get_response(&ctx)
             .await
             .unwrap()
@@ -58,13 +58,13 @@ impl QueueCommand {
         {
             Some(x) => x,
             None => {
-                interaction.delete_response(&ctx).await.unwrap();
+                queue_command.delete_response(&ctx).await.unwrap();
                 return Ok(());
             }
         };
 
         let mut game_name_to_roles: HashMap<String, Vec<ReactionRole>> = HashMap::new();
-        let minutes_to_wait = interaction.data.clone();
+        let minutes_to_wait = queue_time_select_menu_interaction.data.clone();
         self.settings.game_queue.iter().for_each(|game_queue| {
             let game_reaction_roles: Vec<ReactionRole> = self
                 .settings
@@ -79,7 +79,7 @@ impl QueueCommand {
             game_name_to_roles.insert(game_queue.game_name.clone(), game_reaction_roles);
         });
 
-        interaction
+        queue_time_select_menu_interaction
             .create_response(
                 &ctx,
                 CreateInteractionResponse::UpdateMessage(
@@ -126,22 +126,26 @@ impl QueueCommand {
             .await
             .unwrap();
 
-        let interaction = match interaction
-            .get_response(&ctx)
-            .await
-            .unwrap()
-            .await_component_interaction(&ctx.shard)
-            .timeout(Duration::from_secs(5))
-            .await
-        {
-            Some(x) => x,
-            None => {
-                interaction.delete_response(&ctx).await.unwrap();
-                return Ok(());
-            }
-        };
+        let queue_roles_to_mention_select_menu_interaction =
+            match queue_time_select_menu_interaction
+                .get_response(&ctx)
+                .await
+                .unwrap()
+                .await_component_interaction(&ctx.shard)
+                .timeout(Duration::from_secs(60 * 2))
+                .await
+            {
+                Some(x) => x,
+                None => {
+                    queue_time_select_menu_interaction
+                        .delete_response(&ctx)
+                        .await
+                        .unwrap();
+                    return Ok(());
+                }
+            };
 
-        let roles_to_at = interaction.data.clone();
+        let roles_to_at = queue_roles_to_mention_select_menu_interaction.data.clone();
 
         if let ComponentInteractionDataKind::StringSelect {
             values: minutes_to_wait_values,
@@ -153,7 +157,7 @@ impl QueueCommand {
             {
                 let minutes_to_wait_value: u64 =
                     (minutes_to_wait_values[0]).to_string().parse().unwrap();
-                interaction
+                queue_roles_to_mention_select_menu_interaction
                     .create_response(
                         &ctx,
                         CreateInteractionResponse::UpdateMessage(
@@ -192,14 +196,14 @@ impl QueueCommand {
                 let since_the_epoch = start
                     .duration_since(UNIX_EPOCH)
                     .expect("Time Went Backwards");
-                let channel_id = interaction
+                let channel_id = queue_roles_to_mention_select_menu_interaction
                     .get_response(&ctx)
                     .await
                     .unwrap()
                     .channel_id
                     .clone();
 
-                let mut message = channel_id
+                let mut queue_countdown_message = channel_id
                     .send_message(
                         &ctx,
                         CreateMessage::new().content(
@@ -228,55 +232,60 @@ impl QueueCommand {
                             + (APPROX_MATCH_LENGTH_MINS * 60),
                     ));
 
-                interaction.delete_response(&ctx).await.unwrap();
+                queue_roles_to_mention_select_menu_interaction
+                    .delete_response(&ctx)
+                    .await
+                    .unwrap();
                 sleep(Duration::from_secs(minutes_to_wait_value * 60)).await;
-                message
+                queue_countdown_message
                     .edit(
                         &ctx,
                         EditMessage::new().content(approx_match.build()).button(
                             CreateButton::new("wait_for_me")
-                                .label("Join Next Game")
+                                .label("Toggle Join Next Game")
                                 .style(ButtonStyle::Success),
                         ),
                     )
                     .await
                     .unwrap();
-                let mut button_stream = message
+                let mut join_next_game_button_stream = queue_countdown_message
                     .await_component_interactions(&ctx)
                     .timeout(Duration::from_secs(
                         (APPROX_MATCH_LENGTH_MINS * 60) - (minutes_to_wait_value * 60),
                     ))
                     .stream();
 
-                let mut user_list = vec![];
-                while let Some(interaction) = button_stream.next().await {
+                let mut users_waiting = vec![];
+                while let Some(interaction) = join_next_game_button_stream.next().await {
                     interaction
                         .create_response(&ctx, CreateInteractionResponse::Acknowledge)
                         .await
                         .unwrap();
-                    if user_list.len() == 0 {
-                        approx_match.push("## Waiting For Next Game");
-                    }
-
-                    if !user_list.contains(&interaction.user.id) {
-                        message
-                            .edit(
-                                &ctx,
-                                EditMessage::new().content(
-                                    approx_match
-                                        .push_line("")
-                                        .mention(&interaction.user.id)
-                                        .build(),
-                                ),
-                            )
-                            .await
+                    if !users_waiting.contains(&interaction.user.id) {
+                        users_waiting.push(interaction.user.id);
+                    } else {
+                        let user_index = users_waiting
+                            .iter()
+                            .position(|user_id| *user_id == interaction.user.id)
                             .unwrap();
+                        users_waiting.remove(user_index);
                     }
-
-                    user_list.push(interaction.user.id);
+                    queue_countdown_message
+                        .edit(
+                            &ctx,
+                            EditMessage::new().content(
+                                approx_match.build()
+                                    + QueueCommand::build_next_game_queue_list_message(
+                                        &users_waiting,
+                                    )
+                                    .as_str(),
+                            ),
+                        )
+                        .await
+                        .unwrap();
                 }
 
-                message
+                queue_countdown_message
                     .edit(
                         &ctx,
                         EditMessage::new()
@@ -296,6 +305,17 @@ impl QueueCommand {
             }
         }
         Ok(())
+    }
+
+    fn build_next_game_queue_list_message(users_waiting: &Vec<UserId>) -> String {
+        let mut message = MessageBuilder::new();
+        if users_waiting.len() > 0 {
+            message.push_line("### Waiting For Next Game");
+            users_waiting.iter().for_each(|user_id| {
+                message.push_line("").mention(user_id);
+            })
+        }
+        message.build()
     }
 
     pub fn new(settings: Settings) -> QueueCommand {
