@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serenity::builder::*;
+use serenity::futures::StreamExt;
 use serenity::model::prelude::*;
 use serenity::prelude::*;
 use serenity::utils::MessageBuilder;
@@ -214,8 +215,67 @@ impl QueueCommand {
                     .await
                     .unwrap();
 
+                let mut approx_match = response.clone();
+                approx_match
+                    .push_line(format!(
+                        "Started Queueing <t:{}:R>",
+                        since_the_epoch.as_secs() + (minutes_to_wait_value * 60)
+                    ))
+                    .push_line(format!(
+                        "Approx. Next Match <t:{}:R>",
+                        since_the_epoch.as_secs()
+                            + (minutes_to_wait_value * 60)
+                            + (APPROX_MATCH_LENGTH_MINS * 60),
+                    ));
+
                 interaction.delete_response(&ctx).await.unwrap();
                 sleep(Duration::from_secs(minutes_to_wait_value * 60)).await;
+                message
+                    .edit(
+                        &ctx,
+                        EditMessage::new().content(approx_match.build()).button(
+                            CreateButton::new("wait_for_me")
+                                .label("Join Next Game")
+                                .style(ButtonStyle::Success),
+                        ),
+                    )
+                    .await
+                    .unwrap();
+                let mut button_stream = message
+                    .await_component_interactions(&ctx)
+                    .timeout(Duration::from_secs(
+                        (APPROX_MATCH_LENGTH_MINS * 60) - (minutes_to_wait_value * 60),
+                    ))
+                    .stream();
+
+                let mut user_list = vec![];
+                while let Some(interaction) = button_stream.next().await {
+                    interaction
+                        .create_response(&ctx, CreateInteractionResponse::Acknowledge)
+                        .await
+                        .unwrap();
+                    if user_list.len() == 0 {
+                        approx_match.push("## Waiting For Next Game");
+                    }
+
+                    if !user_list.contains(&interaction.user.id) {
+                        message
+                            .edit(
+                                &ctx,
+                                EditMessage::new().content(
+                                    approx_match
+                                        .push_line("")
+                                        .mention(&interaction.user.id)
+                                        .build(),
+                                ),
+                            )
+                            .await
+                            .unwrap();
+                    }
+
+                    user_list.push(interaction.user.id);
+                }
+
                 message
                     .edit(
                         &ctx,
@@ -227,38 +287,9 @@ impl QueueCommand {
                                         "Started Queueing <t:{}:R>",
                                         since_the_epoch.as_secs() + (minutes_to_wait_value * 60)
                                     ))
-                                    .push_line(format!(
-                                        "Approx. Next Match <t:{}:R>",
-                                        since_the_epoch.as_secs()
-                                            + (minutes_to_wait_value * 60)
-                                            + (APPROX_MATCH_LENGTH_MINS * 60),
-                                    ))
                                     .build(),
                             )
-                            .button(
-                                CreateButton::new("wait_for_me")
-                                    .label("I will play next game")
-                                    .style(ButtonStyle::Success),
-                            ),
-                    )
-                    .await
-                    .unwrap();
-                sleep(Duration::from_secs(
-                    (APPROX_MATCH_LENGTH_MINS * 60) - (minutes_to_wait_value * 60),
-                ))
-                .await;
-                message
-                    .edit(
-                        &ctx,
-                        EditMessage::new().content(
-                            response
-                                .clone()
-                                .push_line(format!(
-                                    "Started Queueing <t:{}:R>",
-                                    since_the_epoch.as_secs() + (minutes_to_wait_value * 60)
-                                ))
-                                .build(),
-                        ),
+                            .components(vec![]),
                     )
                     .await
                     .unwrap();
