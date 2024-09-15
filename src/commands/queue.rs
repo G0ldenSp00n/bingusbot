@@ -11,7 +11,7 @@ use crate::settings::{ReactionRole, Settings};
 
 use tokio::time::sleep;
 
-const APPROX_MATCH_LENGTH_MINS: u64 = 30;
+const APPROX_MATCH_LENGTH_MINS: u64 = 40;
 
 pub struct QueueCommand {
     settings: Settings,
@@ -34,10 +34,26 @@ impl QueueCommand {
                                 "minute_wait",
                                 CreateSelectMenuKind::String {
                                     options: vec![
-                                        CreateSelectMenuOption::new("1 Minute", "1"),
-                                        CreateSelectMenuOption::new("5 Minutes", "5"),
-                                        CreateSelectMenuOption::new("10 Minutes", "10"),
-                                        CreateSelectMenuOption::new("15 Minutes", "15"),
+                                        CreateSelectMenuOption::new(
+                                            "30 Seconds",
+                                            format!("{}", 0.5 * 60.0),
+                                        ),
+                                        CreateSelectMenuOption::new(
+                                            "1 Minute",
+                                            format!("{}", 1 * 60),
+                                        ),
+                                        CreateSelectMenuOption::new(
+                                            "5 Minutes",
+                                            format!("{}", 5 * 60),
+                                        ),
+                                        CreateSelectMenuOption::new(
+                                            "10 Minutes",
+                                            format!("{}", 10 * 60),
+                                        ),
+                                        CreateSelectMenuOption::new(
+                                            "15 Minutes",
+                                            format!("{}", 15 * 60),
+                                        ),
                                     ],
                                 },
                             )
@@ -155,7 +171,7 @@ impl QueueCommand {
                 values: roles_to_at_values,
             } = roles_to_at.kind
             {
-                let minutes_to_wait_value: u64 =
+                let seconds_to_wait_value: u64 =
                     (minutes_to_wait_values[0]).to_string().parse().unwrap();
                 queue_roles_to_mention_select_menu_interaction
                     .create_response(
@@ -169,10 +185,22 @@ impl QueueCommand {
                     .await
                     .unwrap();
 
-                let mut response = MessageBuilder::new();
-                response
-                    .push_line("## Queueing")
-                    .push_line("### Looking to Queue With");
+                let mut queueing_up_message = MessageBuilder::new();
+                queueing_up_message
+                    .push_line(format!(
+                        "## {} is Queueing",
+                        queue_roles_to_mention_select_menu_interaction
+                            .user
+                            .clone()
+                            .global_name
+                            .unwrap_or(
+                                queue_roles_to_mention_select_menu_interaction
+                                    .user
+                                    .name
+                                    .clone()
+                            )
+                    ))
+                    .push_line("### Looking to Play with");
                 roles_to_at_values.iter().for_each(|role_id| {
                     let reaction_role = game_name_to_roles
                         .get("Deadlock")
@@ -181,12 +209,12 @@ impl QueueCommand {
                         .find(|reaction_role| &reaction_role.role_id.to_string() == role_id)
                         .unwrap();
                     if let Some(emoji_char) = reaction_role.emoji_char.clone() {
-                        response
+                        queueing_up_message
                             .push(emoji_char)
                             .mention(&RoleId::new(role_id.parse().unwrap()))
                             .push_line("");
                     } else {
-                        response
+                        queueing_up_message
                             .mention(&RoleId::new(role_id.parse().unwrap()))
                             .push_line("");
                     }
@@ -207,11 +235,12 @@ impl QueueCommand {
                     .send_message(
                         &ctx,
                         CreateMessage::new().content(
-                            response
+                            queueing_up_message
                                 .clone()
+                                .push_line("")
                                 .push_line(format!(
                                     "Deadlock Queueing <t:{}:R>",
-                                    since_the_epoch.as_secs() + (minutes_to_wait_value * 60)
+                                    since_the_epoch.as_secs() + (seconds_to_wait_value)
                                 ))
                                 .build(),
                         ),
@@ -219,16 +248,17 @@ impl QueueCommand {
                     .await
                     .unwrap();
 
-                let mut approx_match = response.clone();
+                let mut approx_match = queueing_up_message.clone();
                 approx_match
+                    .push_line("")
                     .push_line(format!(
                         "Started Queueing <t:{}:R>",
-                        since_the_epoch.as_secs() + (minutes_to_wait_value * 60)
+                        since_the_epoch.as_secs() + (seconds_to_wait_value)
                     ))
                     .push_line(format!(
                         "Approx. Next Match <t:{}:R>",
                         since_the_epoch.as_secs()
-                            + (minutes_to_wait_value * 60)
+                            + (seconds_to_wait_value)
                             + (APPROX_MATCH_LENGTH_MINS * 60),
                     ));
 
@@ -236,7 +266,7 @@ impl QueueCommand {
                     .delete_response(&ctx)
                     .await
                     .unwrap();
-                sleep(Duration::from_secs(minutes_to_wait_value * 60)).await;
+                sleep(Duration::from_secs(seconds_to_wait_value)).await;
                 queue_countdown_message
                     .edit(
                         &ctx,
@@ -251,7 +281,7 @@ impl QueueCommand {
                 let mut join_next_game_button_stream = queue_countdown_message
                     .await_component_interactions(&ctx)
                     .timeout(Duration::from_secs(
-                        (APPROX_MATCH_LENGTH_MINS * 60) - (minutes_to_wait_value * 60),
+                        (APPROX_MATCH_LENGTH_MINS * 60) - (seconds_to_wait_value),
                     ))
                     .stream();
 
@@ -290,11 +320,11 @@ impl QueueCommand {
                         &ctx,
                         EditMessage::new()
                             .content(
-                                response
+                                queueing_up_message
                                     .clone()
                                     .push_line(format!(
                                         "Started Queueing <t:{}:R>",
-                                        since_the_epoch.as_secs() + (minutes_to_wait_value * 60)
+                                        since_the_epoch.as_secs() + (seconds_to_wait_value)
                                     ))
                                     .build(),
                             )
