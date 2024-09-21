@@ -39,10 +39,6 @@ impl QueueCommand {
                                             format!("{}", 0.5 * 60.0),
                                         ),
                                         CreateSelectMenuOption::new(
-                                            "1 Minute",
-                                            format!("{}", 1 * 60),
-                                        ),
-                                        CreateSelectMenuOption::new(
                                             "5 Minutes",
                                             format!("{}", 5 * 60),
                                         ),
@@ -53,6 +49,14 @@ impl QueueCommand {
                                         CreateSelectMenuOption::new(
                                             "15 Minutes",
                                             format!("{}", 15 * 60),
+                                        ),
+                                        CreateSelectMenuOption::new(
+                                            "30 Minutes",
+                                            format!("{}", 30 * 60),
+                                        ),
+                                        CreateSelectMenuOption::new(
+                                            "1 Hour",
+                                            format!("{}", 1 * 60 * 60),
                                         ),
                                     ],
                                 },
