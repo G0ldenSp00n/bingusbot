@@ -6,9 +6,13 @@ use std::env;
 
 use commands::queue::QueueCommand;
 use dotenv::dotenv;
-use serenity::builder::{CreateInteractionResponse, CreateInteractionResponseMessage};
+use rand::seq::SliceRandom;
+use serenity::builder::{
+    CreateChannel, CreateInteractionResponse, CreateInteractionResponseMessage,
+};
+use serenity::futures::future::join_all;
 use serenity::http::Http;
-use serenity::model::prelude::*;
+use serenity::model::{guild, prelude::*};
 use serenity::{async_trait, prelude::*};
 use settings::Settings;
 
@@ -55,6 +59,108 @@ impl EventHandler for Handler {
         };
     }
 
+    async fn voice_state_update(&self, ctx: Context, old: Option<VoiceState>, new: VoiceState) {
+        if let Some(channel_id) = new.channel_id {
+            if let Ok(channel) = ctx.http.get_channel(channel_id).await {
+                if let Some(channel) = channel.guild() {
+                    if let Some(parent_id) = channel.parent_id {
+                        if let Some(category_settings) =
+                            self.settings.voice_expander.get(&parent_id)
+                        {
+                            let voice_channels: Vec<GuildChannel> = ctx
+                                .http
+                                .get_channels(channel.guild_id)
+                                .await
+                                .unwrap()
+                                .iter()
+                                .filter_map(|ch| {
+                                    if ch.parent_id == Some(parent_id)
+                                        && ch.kind == ChannelType::Voice
+                                    {
+                                        Some(ch.clone())
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .collect();
+                            if voice_channels.len() < category_settings.max_channels {
+                                let current_names: Vec<String> =
+                                    voice_channels.iter().map(|ch| ch.name.clone()).collect();
+                                let name_options: Vec<String> = category_settings
+                                    .channel_names
+                                    .iter()
+                                    .filter(|chn| !current_names.contains(chn))
+                                    .map(|name| name.clone())
+                                    .collect();
+                                if let Ok(guild) = ctx.http.get_guild(channel.guild_id).await {
+                                    let number_of_empty_channels = voice_channels
+                                        .iter()
+                                        .filter(|ch| ch.members(&ctx).unwrap_or(vec![]).len() == 0)
+                                        .count();
+                                    if number_of_empty_channels == 0 {
+                                        let channel_name = name_options
+                                            .choose(&mut rand::thread_rng())
+                                            .unwrap_or(&"ERROR".to_string())
+                                            .clone();
+                                        guild
+                                            .create_channel(
+                                                &ctx,
+                                                CreateChannel::new(channel_name)
+                                                    .kind(ChannelType::Voice)
+                                                    .category(parent_id)
+                                                    .audit_log_reason(
+                                                        "Create a New Empty Voice Channel",
+                                                    ),
+                                            )
+                                            .await
+                                            .unwrap();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if let Some(old) = old {
+            if let Some(guild_id) = old.guild_id {
+                let voice_channels: Vec<GuildChannel> = ctx
+                    .http
+                    .get_channels(guild_id)
+                    .await
+                    .unwrap()
+                    .iter()
+                    .filter_map(|ch| {
+                        if ch.kind == ChannelType::Voice {
+                            Some(ch.clone())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+
+                let mut channels_to_delete = vec![];
+                self.settings.voice_expander.keys().for_each(|category_id| {
+                    let mut voice_channel_deletes: Vec<_> = voice_channels
+                        .iter()
+                        .rev()
+                        .skip(1)
+                        .filter_map(|vch| {
+                            let members = vch.members(&ctx).unwrap_or(vec![]);
+                            if vch.parent_id == Some(*category_id) && members.len() == 0 {
+                                Some(vch.delete(&ctx))
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
+                    channels_to_delete.append(&mut voice_channel_deletes);
+                });
+                join_all(channels_to_delete).await;
+            }
+        }
+    }
+
     async fn ready(&self, ctx: Context, _ready: Ready) {
         println!("{} is Connected!", self.settings.general.name);
 
@@ -83,6 +189,8 @@ async fn main() {
     };
 
     let intents = GatewayIntents::GUILD_MESSAGES
+        | GatewayIntents::GUILDS
+        | GatewayIntents::GUILD_VOICE_STATES
         | GatewayIntents::DIRECT_MESSAGES
         | GatewayIntents::MESSAGE_CONTENT
         | GatewayIntents::GUILD_MESSAGE_REACTIONS

@@ -84,6 +84,7 @@ name = "bingusbot"
 version = "0.1.0"
 dependencies = [
  "dotenv",
+ "rand",
  "serde",
  "serenity",
  "tokio",

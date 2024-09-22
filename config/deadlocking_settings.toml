@@ -4,6 +4,26 @@ name = "Haze Bot"
 [flags]
 deadlock_queue_start = true
 
+[voice_expander.1278093581671727216]
+channel_names = [
+  "Bodega",
+  "Garage",
+  "Jazz Records",
+  "Teleport Station",
+  "Armory",
+  "Boutique",
+  "Nursery",
+  "Imports",
+  "Exchange",
+  "Chapel",
+  "Firehouse",
+  "New York Oracle",
+  "General Spiritism",
+  "Law Firm",
+  "Hotel"
+]
+max_channels = 5
+
 [[game_queue]]
 game_name = "Deadlock"
 roles_message_id = 1282213950523572287

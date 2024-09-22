@@ -37,11 +37,18 @@ pub struct General {
 }
 
 #[derive(Deserialize, Debug, Clone)]
+pub struct VoiceExpanderSetting {
+    pub channel_names: Vec<String>,
+    pub max_channels: usize,
+}
+
+#[derive(Deserialize, Debug, Clone)]
 pub struct Settings {
     pub general: General,
     pub reaction_roles: Vec<ReactionRoles>,
     pub flags: Flags,
     pub game_queue: Vec<GameQueues>,
+    pub voice_expander: HashMap<ChannelId, VoiceExpanderSetting>,
 }
 
 impl Settings {
