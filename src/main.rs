@@ -144,15 +144,12 @@ impl EventHandler for Handler {
                     let mut voice_channel_deletes: Vec<_> = voice_channels
                         .iter()
                         .rev()
-                        .skip(1)
-                        .filter_map(|vch| {
-                            let members = vch.members(&ctx).unwrap_or(vec![]);
-                            if vch.parent_id == Some(*category_id) && members.len() == 0 {
-                                Some(vch.delete(&ctx))
-                            } else {
-                                None
-                            }
+                        .filter(|ch| {
+                            ch.parent_id == Some(*category_id)
+                                && ch.members(&ctx).unwrap_or(vec![]).len() == 0
                         })
+                        .skip(1)
+                        .map(|vch| vch.delete(&ctx))
                         .collect();
                     channels_to_delete.append(&mut voice_channel_deletes);
                 });
