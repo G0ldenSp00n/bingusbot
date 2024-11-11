@@ -24,6 +24,15 @@ channel_names = [
 ]
 max_channels = 5
 
+[voice_expander.1278093350519701536]
+channel_names = [
+  "York Avenue"
+  "Greenich Street",
+  "Broadway",
+  "Park Avenue"
+]
+max_channels = 4
+
 [[game_queue]]
 game_name = "Deadlock"
 roles_message_id = 1282213950523572287

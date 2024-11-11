@@ -12,7 +12,7 @@ use serenity::builder::{
 };
 use serenity::futures::future::join_all;
 use serenity::http::Http;
-use serenity::model::{guild, prelude::*};
+use serenity::model::prelude::*;
 use serenity::{async_trait, prelude::*};
 use settings::Settings;
 

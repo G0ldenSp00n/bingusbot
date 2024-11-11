@@ -183,7 +183,10 @@ impl QueueCommand {
                         CreateInteractionResponse::UpdateMessage(
                             CreateInteractionResponseMessage::new()
                                 .content("Message Sent!")
-                                .components(vec![]),
+                                .button(CreateButton::new("start_early").label("Start Early"))
+                                .button(
+                                    CreateButton::new("change_time").label("Change Amount of Time"),
+                                ),
                         ),
                     )
                     .await
@@ -266,10 +269,17 @@ impl QueueCommand {
                             + (APPROX_MATCH_LENGTH_MINS * 60),
                     ));
 
-                queue_roles_to_mention_select_menu_interaction
-                    .delete_response(&ctx)
-                    .await
-                    .unwrap();
+                // queue_roles_to_mention_select_menu_interaction
+                //     .delete_response(&ctx)
+                //     .await
+                //     .unwrap();
+                self.countdown_message(
+                    ctx,
+                    queue_time_select_menu_interaction,
+                    &queue_countdown_message,
+                    Duration::from_secs(seconds_to_wait_value),
+                )
+                .await;
                 sleep(Duration::from_secs(seconds_to_wait_value)).await;
                 queue_countdown_message
                     .edit(
@@ -350,6 +360,31 @@ impl QueueCommand {
             })
         }
         message.build()
+    }
+
+    async fn countdown_message(
+        &self,
+        ctx: &Context,
+        component_interaction: ComponentInteraction,
+        countdown_message: &Message,
+        duration: Duration,
+    ) {
+        let change_countdown_timer = match component_interaction
+            .get_response(&ctx)
+            .await
+            .unwrap()
+            .await_component_interaction(&ctx.shard)
+            .timeout(duration)
+            .await
+        {
+            Some(x) => x,
+            None => {
+                component_interaction.delete_response(&ctx).await.unwrap();
+                return ();
+            }
+        };
+        let change_timer_button_press = change_countdown_timer.data.clone();
+        println!("{:?}", change_timer_button_press);
     }
 
     pub fn new(settings: Settings) -> QueueCommand {
