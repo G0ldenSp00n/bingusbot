@@ -20,7 +20,7 @@ channel_names = [
   "New York Oracle",
   "General Spiritism",
   "Law Firm",
-  "Hotel"
+  "Hotel",
 ]
 max_channels = 5
 
@@ -71,3 +71,27 @@ title = "Mechanics Major"
 emoji_char = "🛤️"
 role_id = 1282476935724793876
 title = "Strategy Majors"
+
+[[reaction_roles]]
+message_id = 1333211352919048333
+channel_id = 1282212842094854238
+
+[reaction_roles.roles.sp00ns_factory]
+emoji_char = "⚙️"
+role_id = 1333222589841277021
+title = "Sp00n's Factory Worker"
+
+[reaction_roles.roles.atm_gravitas2]
+emoji_char = "🛠️"
+role_id = 1333222921468121088
+title = "[ATM] Gravitas² Worker"
+
+[reaction_roles.roles.caves_of_qud_reader]
+emoji_char = "🌱"
+role_id = 1333223775944314975
+title = "Caves of Qud Reader"
+
+[reaction_roles.roles.factorio]
+emoji_char = "🦾"
+role_id = 1333223837944385637
+title = "Factorio Worker"
