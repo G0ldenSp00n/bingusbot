@@ -1,5 +1,5 @@
 [general]
-name = "Haze Bot"
+name = "Spork"
 
 [flags]
 deadlock_queue_start = true
@@ -23,6 +23,10 @@ channel_names = [
   "Hotel",
 ]
 max_channels = 5
+
+[voice_expander.1286411981540036650]
+channel_names = ["Knife Nook", "Spoon Spot", "Fork Forum", "Spork Space"]
+max_channels = 3
 
 [[game_queue]]
 game_name = "Deadlock"
@@ -95,3 +99,8 @@ title = "Caves of Qud Reader"
 emoji_char = "🦾"
 role_id = 1333223837944385637
 title = "Factorio Worker"
+
+[reaction_roles.roles.arc_raiders]
+emoji_char = "🤖"
+role_id = 1452451698994843658
+title = "ARC Raiders"
