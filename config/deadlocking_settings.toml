@@ -25,13 +25,24 @@ channel_names = [
 max_channels = 5
 
 [voice_expander.1286411981540036650]
-channel_names = ["Knife Nook", "Spoon Spot", "Fork Forum", "Spork Space"]
+channel_names = [
+  "Knife Knook",
+  "Spoon Spot",
+  "Fork Forum",
+  "Spork Space",
+  "Chopstick Chatroom",
+  "Measuring Cup Meet-Up",
+]
 max_channels = 3
 
 [[game_queue]]
 game_name = "Deadlock"
 roles_message_id = 1282213950523572287
-exclude = []
+
+[[game_queue]]
+game_name = "ARC Raiders"
+roles_message_id = 1333211352919048333
+whitelist = ["ARC Raiders"]
 
 [[reaction_roles]]
 message_id = 1282213950523572287
@@ -104,3 +115,8 @@ title = "Factorio Worker"
 emoji_char = "🤖"
 role_id = 1452451698994843658
 title = "ARC Raiders"
+
+[reaction_roles.roles.vintage_story]
+emoji_char = "📗"
+role_id = 1458669093711249462
+title = "Vintage Story Survivor"

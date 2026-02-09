@@ -23,7 +23,8 @@ pub struct ReactionRoles {
 pub struct GameQueues {
     pub game_name: String,
     pub roles_message_id: MessageId,
-    pub exclude: Vec<String>,
+    pub blacklist: Option<Vec<String>>,
+    pub whitelist: Option<Vec<String>>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -58,7 +59,7 @@ impl Settings {
         )
         .unwrap();
         let reactions_roles: Settings = toml::from_str(file_str.as_str())?;
-        return Ok(reactions_roles);
+        Ok(reactions_roles)
     }
 
     pub fn message_id_to_channel_id(&self) -> HashMap<MessageId, ChannelId> {
@@ -80,9 +81,9 @@ impl Settings {
         > = HashMap::new();
         for reaction_role_message in self.reaction_roles.clone() {
             let message_id = reaction_role_message.message_id;
-            if !message_id_to_emoji_reaction_to_role_lookup.contains_key(&message_id) {
-                message_id_to_emoji_reaction_to_role_lookup.insert(message_id, HashMap::new());
-            }
+            message_id_to_emoji_reaction_to_role_lookup
+                .entry(message_id)
+                .or_default();
 
             for reaction_name in reaction_role_message.roles.keys() {
                 let reaction_role = reaction_role_message.roles.get(reaction_name).unwrap();

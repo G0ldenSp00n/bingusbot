@@ -12,7 +12,7 @@ use serenity::builder::{
 };
 use serenity::futures::future::join_all;
 use serenity::http::Http;
-use serenity::model::{guild, prelude::*};
+use serenity::model::prelude::*;
 use serenity::{async_trait, prelude::*};
 use settings::Settings;
 
@@ -90,12 +90,12 @@ impl EventHandler for Handler {
                                     .channel_names
                                     .iter()
                                     .filter(|chn| !current_names.contains(chn))
-                                    .map(|name| name.clone())
+                                    .cloned()
                                     .collect();
                                 if let Ok(guild) = ctx.http.get_guild(channel.guild_id).await {
                                     let number_of_empty_channels = voice_channels
                                         .iter()
-                                        .filter(|ch| ch.members(&ctx).unwrap_or(vec![]).len() == 0)
+                                        .filter(|ch| ch.members(&ctx).unwrap_or(vec![]).is_empty())
                                         .count();
                                     if number_of_empty_channels == 0 {
                                         let channel_name = name_options
@@ -146,7 +146,7 @@ impl EventHandler for Handler {
                         .rev()
                         .filter(|ch| {
                             ch.parent_id == Some(*category_id)
-                                && ch.members(&ctx).unwrap_or(vec![]).len() == 0
+                                && ch.members(&ctx).unwrap_or(vec![]).is_empty()
                         })
                         .skip(1)
                         .map(|vch| vch.delete(&ctx))

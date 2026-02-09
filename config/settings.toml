@@ -5,25 +5,26 @@ name = "Dev Testing Bot"
 deadlock_queue_start = true
 
 [voice_expander.1128043352311468093]
-channel_names = [
-  "orchid",
-  "rose",
-  "peony"
-]
+channel_names = ["orchid", "rose", "peony"]
 max_channels = 3
 
 [[game_queue]]
 game_name = "Deadlock"
 roles_message_id = 1282242118945083413
-exclude = []
+blacklist = []
+
+[[game_queue]]
+game_name = "ARC Raiders"
+roles_message_id = 1282242118945083413
+whitelist = ["Casual Candle Trooper"]
 
 [[reaction_roles]]
-message_id = 1282242118945083413 
-channel_id = 1282242098380406784 
+message_id = 1282242118945083413
+channel_id = 1282242098380406784
 
 [reaction_roles.roles.casual_candle_trooper]
 emoji_char = "🕯️"
-role_id = 1282242176201527331 
+role_id = 1282242176201527331
 title = "Casual Candle Trooper"
 
 [reaction_roles.roles.try-hard_lane_guardian]

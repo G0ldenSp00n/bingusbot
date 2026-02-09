@@ -23,50 +23,178 @@ impl QueueCommand {
         ctx: &Context,
         queue_command: &CommandInteraction,
     ) -> Result<(), serenity::Error> {
-        queue_command
-            .create_response(
-                &ctx,
-                CreateInteractionResponse::Message(
-                    CreateInteractionResponseMessage::default()
-                        .ephemeral(true)
-                        .select_menu(
-                            CreateSelectMenu::new(
-                                "minute_wait",
-                                CreateSelectMenuKind::String {
-                                    options: vec![
-                                        CreateSelectMenuOption::new(
-                                            "30 Seconds",
-                                            format!("{}", 0.5 * 60.0),
-                                        ),
-                                        CreateSelectMenuOption::new(
-                                            "5 Minutes",
-                                            format!("{}", 5 * 60),
-                                        ),
-                                        CreateSelectMenuOption::new(
-                                            "10 Minutes",
-                                            format!("{}", 10 * 60),
-                                        ),
-                                        CreateSelectMenuOption::new(
-                                            "15 Minutes",
-                                            format!("{}", 15 * 60),
-                                        ),
-                                        CreateSelectMenuOption::new(
-                                            "30 Minutes",
-                                            format!("{}", 30 * 60),
-                                        ),
-                                        CreateSelectMenuOption::new(
-                                            "1 Hour",
-                                            format!("{}", 1 * 60 * 60),
-                                        ),
-                                    ],
-                                },
-                            )
-                            .placeholder("Queue Timer"),
-                        ),
-                ),
-            )
-            .await
-            .unwrap();
+        let mut game_name_to_roles: HashMap<String, Vec<ReactionRole>> = HashMap::new();
+        self.settings
+            .game_queue
+            .iter()
+            .cloned()
+            .for_each(|game_queue| {
+                let game_reaction_roles: Vec<ReactionRole> = self
+                    .settings
+                    .message_id_to_emoji_reaction_to_reactionrole_lookup()
+                    .get(&game_queue.roles_message_id)
+                    .expect("Queue Roles must be Reaction Roles too!")
+                    .values()
+                    .filter(|reaction_role| {
+                        let whitelist = game_queue.whitelist.clone().unwrap_or_default();
+                        let blacklist = game_queue.blacklist.clone().unwrap_or_default();
+                        if !whitelist.is_empty() {
+                            return !blacklist.contains(&reaction_role.title)
+                                && whitelist.contains(&reaction_role.title);
+                        }
+                        !blacklist.contains(&reaction_role.title)
+                    })
+                    .cloned()
+                    .collect();
+                game_name_to_roles.insert(game_queue.game_name, game_reaction_roles);
+            });
+
+        let mut game_select_menu_interaction = None;
+        let mut game_to_queue = "".to_string();
+        if game_name_to_roles.keys().len() == 1 {
+            game_to_queue = game_name_to_roles.keys().next().cloned().unwrap();
+        } else {
+            queue_command
+                .create_response(
+                    &ctx,
+                    CreateInteractionResponse::Message(
+                        CreateInteractionResponseMessage::default()
+                            .ephemeral(true)
+                            .select_menu(
+                                CreateSelectMenu::new(
+                                    "game",
+                                    CreateSelectMenuKind::String {
+                                        options: game_name_to_roles
+                                            .keys()
+                                            .map(|key| CreateSelectMenuOption::new(key, key))
+                                            .collect(),
+                                    },
+                                )
+                                .placeholder("Game"),
+                            ),
+                    ),
+                )
+                .await
+                .unwrap();
+
+            game_select_menu_interaction = Some(
+                match queue_command
+                    .get_response(&ctx)
+                    .await
+                    .unwrap()
+                    .await_component_interaction(&ctx.shard)
+                    .timeout(Duration::from_secs(60 * 2))
+                    .await
+                {
+                    Some(x) => x,
+                    None => {
+                        queue_command.delete_response(&ctx).await.unwrap();
+                        return Ok(());
+                    }
+                },
+            );
+        }
+
+        if let Some(game_select) = game_select_menu_interaction {
+            let game = game_select.data.clone();
+            if let ComponentInteractionDataKind::StringSelect { values: game_value } = game.kind {
+                game_to_queue = game_value.first().unwrap().clone();
+            }
+
+            if game_to_queue.is_empty() {
+                return Ok(());
+            }
+
+            game_select
+                .create_response(
+                    &ctx,
+                    CreateInteractionResponse::UpdateMessage(
+                        CreateInteractionResponseMessage::default()
+                            .ephemeral(true)
+                            .select_menu(
+                                CreateSelectMenu::new(
+                                    "minute_wait",
+                                    CreateSelectMenuKind::String {
+                                        options: vec![
+                                            CreateSelectMenuOption::new(
+                                                "30 Seconds",
+                                                format!("{}", 0.5 * 60.0),
+                                            ),
+                                            CreateSelectMenuOption::new(
+                                                "5 Minutes",
+                                                format!("{}", 5 * 60),
+                                            ),
+                                            CreateSelectMenuOption::new(
+                                                "10 Minutes",
+                                                format!("{}", 10 * 60),
+                                            ),
+                                            CreateSelectMenuOption::new(
+                                                "15 Minutes",
+                                                format!("{}", 15 * 60),
+                                            ),
+                                            CreateSelectMenuOption::new(
+                                                "30 Minutes",
+                                                format!("{}", 30 * 60),
+                                            ),
+                                            CreateSelectMenuOption::new(
+                                                "1 Hour",
+                                                format!("{}", 1 * 60 * 60),
+                                            ),
+                                        ],
+                                    },
+                                )
+                                .placeholder("Queue Timer"),
+                            ),
+                    ),
+                )
+                .await
+                .unwrap();
+        } else {
+            queue_command
+                .create_response(
+                    &ctx,
+                    CreateInteractionResponse::Message(
+                        CreateInteractionResponseMessage::default()
+                            .ephemeral(true)
+                            .select_menu(
+                                CreateSelectMenu::new(
+                                    "minute_wait",
+                                    CreateSelectMenuKind::String {
+                                        options: vec![
+                                            CreateSelectMenuOption::new(
+                                                "30 Seconds",
+                                                format!("{}", 0.5 * 60.0),
+                                            ),
+                                            CreateSelectMenuOption::new(
+                                                "5 Minutes",
+                                                format!("{}", 5 * 60),
+                                            ),
+                                            CreateSelectMenuOption::new(
+                                                "10 Minutes",
+                                                format!("{}", 10 * 60),
+                                            ),
+                                            CreateSelectMenuOption::new(
+                                                "15 Minutes",
+                                                format!("{}", 15 * 60),
+                                            ),
+                                            CreateSelectMenuOption::new(
+                                                "30 Minutes",
+                                                format!("{}", 30 * 60),
+                                            ),
+                                            CreateSelectMenuOption::new(
+                                                "1 Hour",
+                                                format!("{}", 1 * 60 * 60),
+                                            ),
+                                        ],
+                                    },
+                                )
+                                .placeholder("Queue Timer"),
+                            ),
+                    ),
+                )
+                .await
+                .unwrap();
+        }
 
         let queue_time_select_menu_interaction = match queue_command
             .get_response(&ctx)
@@ -83,21 +211,7 @@ impl QueueCommand {
             }
         };
 
-        let mut game_name_to_roles: HashMap<String, Vec<ReactionRole>> = HashMap::new();
         let minutes_to_wait = queue_time_select_menu_interaction.data.clone();
-        self.settings.game_queue.iter().for_each(|game_queue| {
-            let game_reaction_roles: Vec<ReactionRole> = self
-                .settings
-                .message_id_to_emoji_reaction_to_reactionrole_lookup()
-                .get(&game_queue.roles_message_id.clone())
-                .expect("Queue Roles must be Reaction Roles too!")
-                .values()
-                .clone()
-                .filter(|reaction_role| !game_queue.exclude.contains(&reaction_role.title))
-                .map(|reaction_role| reaction_role.clone())
-                .collect();
-            game_name_to_roles.insert(game_queue.game_name.clone(), game_reaction_roles);
-        });
 
         queue_time_select_menu_interaction
             .create_response(
@@ -110,7 +224,7 @@ impl QueueCommand {
                                 "ping_roles",
                                 CreateSelectMenuKind::String {
                                     options: game_name_to_roles
-                                        .get("Deadlock")
+                                        .get(&game_to_queue)
                                         .unwrap()
                                         .iter()
                                         .map(|reaction_role| {
@@ -138,7 +252,7 @@ impl QueueCommand {
                                 },
                             )
                             .min_values(1)
-                            .max_values(game_name_to_roles.get("Deadlock").unwrap().len() as u8)
+                            .max_values(game_name_to_roles.get(&game_to_queue).unwrap().len() as u8)
                             .placeholder("Roles to Ping"),
                         ),
                 ),
@@ -207,7 +321,7 @@ impl QueueCommand {
                     .push_line("### Looking to Play with");
                 roles_to_at_values.iter().for_each(|role_id| {
                     let reaction_role = game_name_to_roles
-                        .get("Deadlock")
+                        .get(&game_to_queue)
                         .unwrap()
                         .iter()
                         .find(|reaction_role| &reaction_role.role_id.to_string() == role_id)
@@ -232,8 +346,7 @@ impl QueueCommand {
                     .get_response(&ctx)
                     .await
                     .unwrap()
-                    .channel_id
-                    .clone();
+                    .channel_id;
 
                 let mut queue_countdown_message = channel_id
                     .send_message(
@@ -243,7 +356,8 @@ impl QueueCommand {
                                 .clone()
                                 .push_line("")
                                 .push_line(format!(
-                                    "Deadlock Queueing <t:{}:R>",
+                                    "{} Queueing <t:{}:R>",
+                                    game_to_queue,
                                     since_the_epoch.as_secs() + (seconds_to_wait_value)
                                 ))
                                 .build(),
@@ -283,7 +397,7 @@ impl QueueCommand {
                     .await
                     .unwrap();
                 let mut join_next_game_button_stream = queue_countdown_message
-                    .await_component_interactions(&ctx)
+                    .await_component_interactions(ctx)
                     .timeout(Duration::from_secs(
                         (APPROX_MATCH_LENGTH_MINS * 60) - (seconds_to_wait_value),
                     ))
@@ -341,9 +455,9 @@ impl QueueCommand {
         Ok(())
     }
 
-    fn build_next_game_queue_list_message(users_waiting: &Vec<UserId>) -> String {
+    fn build_next_game_queue_list_message(users_waiting: &[UserId]) -> String {
         let mut message = MessageBuilder::new();
-        if users_waiting.len() > 0 {
+        if users_waiting.is_empty() {
             message.push_line("### Waiting For Next Game");
             users_waiting.iter().for_each(|user_id| {
                 message.push_line("").mention(user_id);
