@@ -120,3 +120,8 @@ title = "ARC Raiders"
 emoji_char = "📗"
 role_id = 1458669093711249462
 title = "Vintage Story Survivor"
+
+[reaction_roles.roles.eggsplosion]
+emoji_char = "🥚"
+role_id = 1470268472994041977
+title = "EggSplosion"
