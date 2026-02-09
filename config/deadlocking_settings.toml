@@ -104,3 +104,8 @@ title = "Factorio Worker"
 emoji_char = "🤖"
 role_id = 1452451698994843658
 title = "ARC Raiders"
+
+[reaction_roles.roles.eggsplosion]
+emoji_char = "🥚"
+role_id = 1470268472994041977
+title = "EggSplosion"
