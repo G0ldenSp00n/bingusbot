@@ -1,0 +1,34 @@
+name: Build and Push Docker Image
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Generate version number
+      id: version
+      run: |
+        # Calculate version starting at v24
+        # github.run_number starts at 1, so we add 23
+        VERSION="v$(( ${{ github.run_number }} + 23 ))"
+        echo "image_tag=$VERSION" >> $GITHUB_OUTPUT
+        echo "Generated version: $VERSION"
+
+    - name: Build Docker image
+      run: docker build . -t g0ldensp00n/bingusbot:${{ steps.version.outputs.image_tag }} --platform="linux/amd64"
+
+    - name: Push Docker image
+      run: docker push g0ldensp00n/bingusbot:${{ steps.version.outputs.image_tag }}
