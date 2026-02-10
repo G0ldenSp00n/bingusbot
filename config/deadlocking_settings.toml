@@ -44,6 +44,11 @@ game_name = "ARC Raiders"
 roles_message_id = 1333211352919048333
 whitelist = ["ARC Raiders"]
 
+[[game_queue]]
+game_name = "EggSplosion"
+roles_message_id = 1333211352919048333
+whitelist = ["EggSplosion"]
+
 [[reaction_roles]]
 message_id = 1282213950523572287
 channel_id = 1282212842094854238
